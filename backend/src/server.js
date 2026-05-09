@@ -1,40 +1,45 @@
-// ============================================
-// WASEL | واصل - Server Entry Point
-// Created by Marref Mohammed Anas
-// © 2026 WASEL. All Rights Reserved.
-// ============================================
+const express  = require('express');
+const http     = require('http');
+const cors     = require('cors');
+const path     = require('path');
 
-require('dotenv').config();
-const http = require('http');
-const { Server } = require('socket.io');
-const app = require('./app');
-const initTrackingSocket = require('./sockets/tracking.socket');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-const PORT = process.env.PORT || 3500;
+const db = require('./config/db');
 
+const app    = express();
 const server = http.createServer(app);
 
-// ─── Socket.io Setup ────────────────────────
-const io = new Server(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    methods: ['GET', 'POST']
-  }
+app.locals.db = db;
+
+app.use(cors({ origin: '*' }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', message: 'WASEL API Running' });
 });
 
-initTrackingSocket(io);
+const authRoutes   = require('./routes/auth.routes');
+const adminRoutes  = require('./routes/admin.routes');
+const orderRoutes  = require('./routes/order.routes');
+const storeRoutes  = require('./routes/store.routes');
+const driverRoutes = require('./routes/driver.routes');
 
-// ─── Start Server ────────────────────────────
+app.use('/api/auth',    authRoutes);
+app.use('/api/admin',   adminRoutes);
+app.use('/api/orders',  orderRoutes);
+app.use('/api/stores',  storeRoutes);
+app.use('/api/drivers', driverRoutes);
+
+app.use((req, res) => {
+  res.status(404).json({ message: `Route ${req.method} ${req.url} not found` });
+});
+
+const PORT = process.env.PORT || 3500;
 server.listen(PORT, () => {
-  console.log(`
-  ================================
-  🚀 WASEL Server is running!
-  📡 Port: ${PORT}
-  🔌 Socket.io: Active
-  🌍 Mode: ${process.env.NODE_ENV || 'development'}
-  👤 Created by: Marref Mohammed Anas
-  ================================
-  `);
+  console.log('================================');
+  console.log('🚀 WASEL Server on port ' + PORT);
+  console.log('✅ Routes loaded successfully');
+  console.log('================================');
 });
-
-module.exports = server;
